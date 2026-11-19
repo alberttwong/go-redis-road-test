@@ -37,7 +37,7 @@ func newServerStats(t target, proxyAddr string) *serverStats {
 	// metrics take server.address from there and the pool name from Addr, so
 	// otel.go can leave these two clients out of the engine's numbers.
 	opt := func(addr, name string, size int) *redis.Options {
-		return &redis.Options{Addr: name + ":0", Username: t.user, Password: t.pass, ClientName: name, PoolSize: size, Protocol: 3, TLSConfig: t.tls,
+		return &redis.Options{Addr: name + ":0", Username: t.user, Password: t.pass, ClientName: name, PoolSize: size, TLSConfig: t.tls,
 			DialTimeout: 3 * time.Second, DialerRetries: 1,
 			Dialer: func(ctx context.Context, network, _ string) (net.Conn, error) {
 				c, err := t.dialer(3*time.Second)(ctx, network, addr)

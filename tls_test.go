@@ -11,6 +11,8 @@ import (
 	"encoding/pem"
 	"errors"
 	"github.com/redis/go-redis/v9"
+	"go/parser"
+	"go/token"
 	"io"
 	"math/big"
 	"net"
@@ -319,6 +321,48 @@ func TestTLSPolicyAndDisplay(t *testing.T) {
 	}
 	if first.security() != "verified TLS" || (target{}).security() != "plain TCP" {
 		t.Fatal("incorrect transport display")
+	}
+}
+
+func TestClientCodeTransportOptions(t *testing.T) {
+	configured := defaultConfig()
+	configured.RESP2 = true
+	configured.TimeoutMs = 250
+	for _, cfg := range []config{defaultConfig(), configured} {
+		for _, policy := range []*tls.Config{
+			nil,
+			{MinVersion: tls.VersionTLS12},
+			{MinVersion: tls.VersionTLS12, ServerName: "override.test", RootCAs: x509.NewCertPool()},
+		} {
+			auth := target{addr: "redis.test:6379", tls: policy}
+			for e := Engine(0); e < numEngines; e++ {
+				code := auth.clientCode(cfg, e)
+				if _, err := parser.ParseFile(token.NewFileSet(), "sketch.go", "package sketch\nfunc example() {\n"+code+"\n}", parser.AllErrors); err != nil {
+					t.Fatalf("%s: invalid sketch: %v\n%s", e, err, code)
+				}
+				if policy == nil {
+					if strings.Contains(code, "TLSConfig:") || code != "/* plain TCP */\n"+cfg.code(e, nil) {
+						t.Fatalf("%s: plain sketch changed: %s", e, code)
+					}
+					continue
+				}
+				if strings.Count(code, "redis.NewClient(") != 1 || strings.Count(code, "TLSConfig:") != 1 {
+					t.Fatalf("%s: expected one TLS client: %s", e, code)
+				}
+				for _, field := range cfg.clientCode() {
+					if !strings.Contains(code, field) {
+						t.Fatalf("%s: missing client option %q: %s", e, field, code)
+					}
+				}
+				name := "redis.test"
+				if policy.ServerName != "" {
+					name = policy.ServerName
+				}
+				if !strings.Contains(code, `ServerName: "`+name+`"`) || strings.Contains(code, "RootCAs: roots") != (policy.RootCAs != nil) {
+					t.Fatalf("%s: incorrect TLS policy: %s", e, code)
+				}
+			}
+		}
 	}
 }
 

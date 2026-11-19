@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strings"
 	"time"
 )
 
@@ -94,9 +93,8 @@ func (t target) security() string {
 // This is an options sketch, not a complete program. Root CAs and the verified
 // target name must come from the same policy as the running clients.
 func (t target) clientCode(c config, e Engine) string {
-	code := c.code(e)
 	if t.tls == nil {
-		return "/* plain TCP */\n" + code
+		return "/* plain TCP */\n" + c.code(e, nil)
 	}
 	cfg, err := t.tlsForTarget()
 	if err != nil {
@@ -106,9 +104,6 @@ func (t target) clientCode(c config, e Engine) string {
 	if cfg.RootCAs != nil {
 		fields += ", RootCAs: roots /* configured system + custom CA pool */"
 	}
-	fields += "}, "
-	if !strings.Contains(code, "redis.NewClient") {
-		code = "rdb := redis.NewClient(&redis.Options{})\n" + code
-	}
-	return "/* verified TLS; import crypto/tls; default dialer performs the handshake */\n" + strings.Replace(code, "&redis.Options{", "&redis.Options{"+fields, 1)
+	fields += "}"
+	return "/* verified TLS; import crypto/tls; default dialer performs the handshake */\n" + c.code(e, []string{fields})
 }

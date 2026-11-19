@@ -27,7 +27,4 @@ callers were started. Exactly two fresh `adbc:tls-road-smoke:*` keys per mode we
 created; exact DEL and post-DEL EXISTS=0 assertions passed. All clients were closed.
 
 The final complete race suite, with the opt-in Software smoke enabled, passed in
-2.223s. This was a correctness smoke, not a performance measurement. Raw logs,
-endpoint identifiers, credentials and fixture configuration remain private. The
-repository's plain Redis Compose was not run. No Community, Valkey, ElastiCache
-or Memorystore endpoint was used.
+2.223s. This was a correctness smoke, not a performance measurement.
